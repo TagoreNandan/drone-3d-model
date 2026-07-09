@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS alerts;
+DROP TABLE IF EXISTS telemetry_frames;
+DROP TABLE IF EXISTS flight_sessions;
+DROP TABLE IF EXISTS missions;
+DROP TABLE IF EXISTS vehicles;

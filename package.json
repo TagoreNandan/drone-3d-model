@@ -1,0 +1,36 @@
+{
+  "name": "gcs",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "turbo -F web dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:server": "cd apps/server && go run cmd/server/main.go",
+    "setup:server": "cd apps/server && go mod tidy",
+    "check:server": "cd apps/server && go mod tidy && go test ./...",
+    "test:server": "cd apps/server && go mod tidy && go test ./...",
+    "db:start": "turbo -F @gcs/db db:start",
+    "db:watch": "turbo -F @gcs/db db:watch",
+    "db:stop": "turbo -F @gcs/db db:stop",
+    "db:down": "turbo -F @gcs/db db:down",
+    "test": "pnpm --filter web test"
+  },
+  "dependencies": {
+    "@gcs/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@gcs/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "turbo": "^2.10.0",
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

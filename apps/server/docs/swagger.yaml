@@ -1,0 +1,460 @@
+basePath: /
+definitions:
+  alerts.AlertResponse:
+    properties:
+      id:
+        type: integer
+      severity:
+        type: integer
+      text:
+        type: string
+      ts:
+        type: string
+      vehicle_id:
+        type: string
+    type: object
+  alerts.CreateAlertRequest:
+    properties:
+      severity:
+        type: integer
+      text:
+        type: string
+      vehicle_id:
+        type: string
+    type: object
+  missions.CreateMissionRequest:
+    properties:
+      geofence_json:
+        type: object
+      name:
+        type: string
+      plan_json:
+        type: object
+      rally_points_json:
+        type: object
+      vehicle_id:
+        type: string
+    type: object
+  missions.MissionResponse:
+    properties:
+      created_at:
+        type: string
+      geofence_json:
+        type: object
+      id:
+        type: string
+      name:
+        type: string
+      plan_json:
+        type: object
+      rally_points_json:
+        type: object
+      uploaded_at:
+        type: string
+      vehicle_id:
+        type: string
+    type: object
+  telemetry.IngestTelemetryRequest:
+    properties:
+      alt:
+        type: number
+      armed:
+        type: boolean
+      battery_pct:
+        type: integer
+      cpu_pct:
+        type: number
+      cpu_temp:
+        type: number
+      current:
+        type: number
+      disk_pct:
+        type: number
+      flight_mode:
+        type: string
+      groundspeed:
+        type: number
+      heading:
+        type: number
+      lat:
+        type: number
+      lon:
+        type: number
+      node_status:
+        type: object
+      ram_pct:
+        type: number
+      ts:
+        type: string
+      vehicle_id:
+        type: string
+      voltage:
+        type: number
+    type: object
+  telemetry.TelemetryFrameResponse:
+    properties:
+      alt:
+        type: number
+      armed:
+        type: boolean
+      battery_pct:
+        type: integer
+      cpu_pct:
+        type: number
+      cpu_temp:
+        type: number
+      current:
+        type: number
+      disk_pct:
+        type: number
+      flight_mode:
+        type: string
+      groundspeed:
+        type: number
+      heading:
+        type: number
+      lat:
+        type: number
+      lon:
+        type: number
+      node_status:
+        type: object
+      ram_pct:
+        type: number
+      ts:
+        type: string
+      vehicle_id:
+        type: string
+      voltage:
+        type: number
+    type: object
+  vehicles.CreateVehicleRequest:
+    properties:
+      firmware:
+        type: string
+      mavlink_sysid:
+        type: integer
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+  vehicles.VehicleResponse:
+    properties:
+      created_at:
+        type: string
+      firmware:
+        type: string
+      id:
+        type: string
+      mavlink_sysid:
+        type: integer
+      name:
+        type: string
+      type:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Ground Control Station backend API.
+  title: GCS API
+  version: "0.1"
+paths:
+  /api/alerts:
+    get:
+      parameters:
+      - description: Vehicle ID
+        in: query
+        name: vehicle_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/alerts.AlertResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List recent alerts for a vehicle
+      tags:
+      - alerts
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Alert to create
+        in: body
+        name: alert
+        required: true
+        schema:
+          $ref: '#/definitions/alerts.CreateAlertRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create an alert
+      tags:
+      - alerts
+  /api/missions:
+    get:
+      parameters:
+      - description: Vehicle ID
+        in: query
+        name: vehicle_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/missions.MissionResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List missions for a vehicle
+      tags:
+      - missions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Mission to create
+        in: body
+        name: mission
+        required: true
+        schema:
+          $ref: '#/definitions/missions.CreateMissionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/missions.MissionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a mission
+      tags:
+      - missions
+  /api/missions/{id}/upload:
+    post:
+      parameters:
+      - description: Mission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Mark a mission as uploaded
+      tags:
+      - missions
+  /api/telemetry:
+    get:
+      parameters:
+      - description: Vehicle ID
+        in: query
+        name: vehicle_id
+        required: true
+        type: string
+      - description: Range start (RFC3339)
+        in: query
+        name: from
+        required: true
+        type: string
+      - description: Range end (RFC3339)
+        in: query
+        name: to
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/telemetry.TelemetryFrameResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get telemetry frames in a time range
+      tags:
+      - telemetry
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Telemetry frame
+        in: body
+        name: frame
+        required: true
+        schema:
+          $ref: '#/definitions/telemetry.IngestTelemetryRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Ingest a telemetry frame
+      tags:
+      - telemetry
+  /api/vehicles:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/vehicles.VehicleResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List vehicles
+      tags:
+      - vehicles
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Vehicle to create
+        in: body
+        name: vehicle
+        required: true
+        schema:
+          $ref: '#/definitions/vehicles.CreateVehicleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/vehicles.VehicleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a vehicle
+      tags:
+      - vehicles
+  /api/vehicles/{id}:
+    get:
+      parameters:
+      - description: Vehicle ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/vehicles.VehicleResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a vehicle
+      tags:
+      - vehicles
+swagger: "2.0"
