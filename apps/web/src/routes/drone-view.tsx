@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import Drone from "@/components/drone/Drone";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface TelemetryData {
@@ -15,26 +14,34 @@ interface TelemetryData {
   ts: string;
 }
 
-function SceneController({ telemetryRef }: { telemetryRef: RefObject<TelemetryData | null> }) {
-  const droneRef = useRef<THREE.Group>(null);
+function SceneController({
+  telemetryRef,
+}: {
+  telemetryRef: React.RefObject<TelemetryData | null>;
+}) {
+  const { scene } = useGLTF("/models/drone.glb");
+
+  useEffect(() => {
+    scene.rotation.y = Math.PI;
+
+    const box = new THREE.Box3().setFromObject(scene);
+    const center = box.getCenter(new THREE.Vector3());
+    scene.position.sub(center);
+  }, [scene]);
 
   useFrame(() => {
-    if (!droneRef.current || !telemetryRef.current) return;
+    if (!telemetryRef.current) return;
+
     const { roll, pitch, yaw } = telemetryRef.current;
 
-    const rollRad = (roll * Math.PI) / 180;
-    const pitchRad = (pitch * Math.PI) / 180;
-    const yawRad = (yaw * Math.PI) / 180;
-    // Axis mapping:
-    // Yaw rotates around Y (Up).
-    // Pitch rotates around X (Right/Left tilting).
-    // Roll rotates around Z (Forward/Backward tilting).
-    // Order YXZ corresponds to standard aerospace rotation sequences in Three.js coordinates.
-    const euler = new THREE.Euler(pitchRad, yawRad, rollRad, "YXZ");
-    droneRef.current.quaternion.setFromEuler(euler);
+    scene.rotation.set(
+      THREE.MathUtils.degToRad(pitch),
+      THREE.MathUtils.degToRad(yaw),
+      THREE.MathUtils.degToRad(roll)
+    );
   });
 
-  return <Drone ref={droneRef} />;
+  return <primitive object={scene} scale={10} />;
 }
 
 export default function DroneView() {
@@ -46,9 +53,12 @@ export default function DroneView() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as TelemetryData;
+
+        console.log(data);
+
         telemetryRef.current = data;
       } catch (err) {
-        console.error("Failed to parse telemetry message:", err);
+        console.error(err);
       }
     };
 
@@ -96,11 +106,27 @@ export default function DroneView() {
         </div>
       )}
 
-      <Canvas camera={{ position: [2, 2, 2], fov: 50 }}>
-        <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 10]} intensity={1.0} />
+      <Canvas camera={{ position: [5, 4, 8], fov: 45 }}>
+        <ambientLight intensity={5} />
+        <directionalLight
+          position={[5, 5, 5]}
+          intensity={8}
+        />
+        <directionalLight
+          position={[-5, 5, -5]}
+          intensity={6}
+        />
+        <hemisphereLight
+          intensity={3}
+          groundColor="gray"
+        />
         <SceneController telemetryRef={telemetryRef} />
-        <OrbitControls />
+        <OrbitControls
+          target={[0, 0.8, 0]}
+          enablePan={false}
+          enableDamping
+          dampingFactor={0.08}
+        />
       </Canvas>
     </div>
   );
