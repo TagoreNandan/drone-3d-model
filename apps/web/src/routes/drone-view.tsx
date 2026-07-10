@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
+/**
+ * TelemetryData represents the structure of orientation and performance metrics
+ * streamed from the mock drone server.
+ */
 interface TelemetryData {
   roll: number;
   pitch: number;
@@ -53,9 +57,6 @@ export default function DroneView() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data) as TelemetryData;
-
-        console.log(data);
-
         telemetryRef.current = data;
       } catch (err) {
         console.error(err);
@@ -100,6 +101,18 @@ export default function DroneView() {
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground">Battery:</span>
                 <span className="font-mono font-semibold">{Math.round(metrics.battery_pct)} %</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Roll:</span>
+                <span className="font-mono font-semibold">{metrics.roll.toFixed(1)}°</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Pitch:</span>
+                <span className="font-mono font-semibold">{metrics.pitch.toFixed(1)}°</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground">Yaw:</span>
+                <span className="font-mono font-semibold">{metrics.yaw.toFixed(1)}°</span>
               </div>
             </CardContent>
           </Card>

@@ -14,6 +14,12 @@ type Orientation struct {
 	AltitudeM  float64 `json:"altitude_m"`
 	SpeedMps   float64 `json:"speed_mps"`
 	BatteryPct float64 `json:"battery_pct"`
+
+	// Body-frame angular velocity rate metrics, corresponding to real drone telemetry (e.g. MAVLink ATTITUDE.rollspeed/pitchspeed/yawspeed).
+	// Measured in radians per second (rad/s) to resemble actual IMU/flight controller outputs.
+	RollSpeed  float64 `json:"rollspeed"`
+	PitchSpeed float64 `json:"pitchspeed"`
+	YawSpeed   float64 `json:"yawspeed"`
 }
 
 // Config defines the limits and walk steps for telemetry.
@@ -69,6 +75,11 @@ type Generator struct {
 	altitudeM  float64
 	speedMps   float64
 	batteryPct float64
+
+	// Internal angular speeds in degrees/second for dynamics integration
+	rollSpeed  float64
+	pitchSpeed float64
+	yawSpeed   float64
 }
 
 // NewGenerator initializes the state deterministically.
@@ -82,6 +93,9 @@ func NewGenerator(cfg Config) *Generator {
 		altitudeM:  (cfg.MinAlt + cfg.MaxAlt) / 2.0,
 		speedMps:   (cfg.MinSpeed + cfg.MaxSpeed) / 2.0,
 		batteryPct: 100.0,
+		rollSpeed:  0.0,
+		pitchSpeed: 0.0,
+		yawSpeed:   0.0,
 	}
 }
 
@@ -95,13 +109,56 @@ func (g *Generator) Next(deltaSeconds float64) Orientation {
 			AltitudeM:  g.altitudeM,
 			SpeedMps:   g.speedMps,
 			BatteryPct: g.batteryPct,
+			RollSpeed:  g.rollSpeed * (math.Pi / 180.0),
+			PitchSpeed: g.pitchSpeed * (math.Pi / 180.0),
+			YawSpeed:   g.yawSpeed * (math.Pi / 180.0),
 		}
 	}
 
-	// Random step scaled by delta time
-	g.roll += (g.rng.Float64()*2 - 1) * g.config.RollStep * deltaSeconds
-	g.pitch += (g.rng.Float64()*2 - 1) * g.config.PitchStep * deltaSeconds
-	g.yaw += (g.rng.Float64()*2 - 1) * g.config.YawStep * deltaSeconds
+	// Sub-step integration to maintain numerical stability for the spring-mass-damper system
+	dtRemaining := deltaSeconds
+	const maxStep = 0.05 // 50ms sub-steps for stability
+	for dtRemaining > 0 {
+		dt := dtRemaining
+		if dt > maxStep {
+			dt = maxStep
+		}
+		dtRemaining -= dt
+
+		// Roll dynamics (stabilized towards 0 degrees using spring-mass-damper model)
+		// Accelerations: random turbulence + spring centering force + drag/damping
+		rollAccel := (g.rng.Float64()*2 - 1) * 150.0 - 8.0 * g.roll - 4.0 * g.rollSpeed
+		g.rollSpeed += rollAccel * dt
+		// Clamp speed to realistic max roll rate of 100 deg/s
+		if g.rollSpeed < -100.0 {
+			g.rollSpeed = -100.0
+		} else if g.rollSpeed > 100.0 {
+			g.rollSpeed = 100.0
+		}
+		g.roll += g.rollSpeed * dt
+
+		// Pitch dynamics (stabilized towards 0 degrees using spring-mass-damper model)
+		pitchAccel := (g.rng.Float64()*2 - 1) * 150.0 - 8.0 * g.pitch - 4.0 * g.pitchSpeed
+		g.pitchSpeed += pitchAccel * dt
+		if g.pitchSpeed < -100.0 {
+			g.pitchSpeed = -100.0
+		} else if g.pitchSpeed > 100.0 {
+			g.pitchSpeed = 100.0
+		}
+		g.pitch += g.pitchSpeed * dt
+
+		// Yaw dynamics (drifting yaw-rate, no centering spring force since heading is free)
+		yawAccel := (g.rng.Float64()*2 - 1) * 40.0 - 2.0 * g.yawSpeed
+		g.yawSpeed += yawAccel * dt
+		if g.yawSpeed < -45.0 {
+			g.yawSpeed = -45.0
+		} else if g.yawSpeed > 45.0 {
+			g.yawSpeed = 45.0
+		}
+		g.yaw += g.yawSpeed * dt
+	}
+
+	// Update altitude and speed with standard random walk
 	g.altitudeM += (g.rng.Float64()*2 - 1) * g.config.AltStep * deltaSeconds
 	g.speedMps += (g.rng.Float64()*2 - 1) * g.config.SpeedStep * deltaSeconds
 
@@ -112,14 +169,18 @@ func (g *Generator) Next(deltaSeconds float64) Orientation {
 	// Clamp states to configured ranges
 	if g.roll < g.config.MinRoll {
 		g.roll = g.config.MinRoll
+		g.rollSpeed = 0
 	} else if g.roll > g.config.MaxRoll {
 		g.roll = g.config.MaxRoll
+		g.rollSpeed = 0
 	}
 
 	if g.pitch < g.config.MinPitch {
 		g.pitch = g.config.MinPitch
+		g.pitchSpeed = 0
 	} else if g.pitch > g.config.MaxPitch {
 		g.pitch = g.config.MaxPitch
+		g.pitchSpeed = 0
 	}
 
 	if g.altitudeM < g.config.MinAlt {
@@ -153,5 +214,8 @@ func (g *Generator) Next(deltaSeconds float64) Orientation {
 		AltitudeM:  g.altitudeM,
 		SpeedMps:   g.speedMps,
 		BatteryPct: g.batteryPct,
+		RollSpeed:  g.rollSpeed * (math.Pi / 180.0),
+		PitchSpeed: g.pitchSpeed * (math.Pi / 180.0),
+		YawSpeed:   g.yawSpeed * (math.Pi / 180.0),
 	}
 }
